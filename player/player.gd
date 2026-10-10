@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## მოთამაშე: სირბილი და ხტომა.
+## მოთამაშე: სირბილი, ხტომა და მახვილით დარტყმა.
 ##
 ## ქვემოთ მოცემული რიცხვები შეგიძლიათ Inspector-ში შეცვალოთ
 ## (აირჩიეთ Player კვანძი) — კოდში შესვლა არ არის საჭირო.
@@ -30,6 +30,12 @@ extends CharacterBody2D
 ## დაცემამდე ამდენი წამით ადრე დაჭერილი ხტომაც ჩაითვლება.
 @export var jump_buffer_time := 0.12
 
+@export_group("ბრძოლა")
+## მოქნევისას წინ „გადადგმული ნაბიჯის“ სიჩქარე.
+@export var lunge_speed := 260.0
+## მოქნევის დროს მიწაზე რამდენად სწრაფად ჩერდება.
+@export var attack_friction := 1400.0
+
 @export_group("სხვა")
 ## ამ სიღრმეზე ჩავარდნისას მოთამაშე საწყის ადგილას ბრუნდება.
 @export var fall_limit := 1300.0
@@ -37,16 +43,23 @@ extends CharacterBody2D
 var _coyote_timer := 0.0
 var _jump_buffer_timer := 0.0
 var _spawn_position := Vector2.ZERO
+## 1 = მარჯვნივ იყურება, -1 = მარცხნივ.
+var _facing := 1.0
 
 @onready var _visual: Node2D = $Visual
+@onready var _sword: Sword = $Visual/Sword
 
 
 func _ready() -> void:
 	_spawn_position = global_position
+	_sword.swing_started.connect(_on_sword_swing_started)
 
 
 # ეს ფუნქცია წამში 60-ჯერ ეშვება და ყოველ ჯერზე მოძრაობას ითვლის.
 func _physics_process(delta: float) -> void:
+	if Input.is_action_just_pressed("attack"):
+		_sword.request_attack()
+
 	_apply_gravity(delta)
 	_handle_jump(delta)
 	_handle_run(delta)
@@ -88,15 +101,28 @@ func _handle_jump(delta: float) -> void:
 
 
 func _handle_run(delta: float) -> void:
+	# მოქნევის დროს მიწაზე სირბილი არ შეიძლება — დარტყმას „წონა“ აქვს.
+	# ჰაერში კი მოთამაშე ძველი სიჩქარით აგრძელებს ფრენას.
+	if _sword.is_busy():
+		if is_on_floor():
+			velocity.x = move_toward(velocity.x, 0.0, attack_friction * delta)
+		return
+
 	var direction := Input.get_axis("move_left", "move_right")
 	var control := 1.0 if is_on_floor() else air_control
 
 	if direction != 0.0:
 		velocity.x = move_toward(velocity.x, direction * run_speed, acceleration * control * delta)
 		# პერსონაჟი მოძრაობის მხარეს „იყურება“.
-		_visual.scale.x = signf(direction)
+		_facing = signf(direction)
+		_visual.scale.x = _facing
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, friction * control * delta)
+
+
+func _on_sword_swing_started() -> void:
+	if is_on_floor():
+		velocity.x = _facing * lunge_speed
 
 
 func _respawn() -> void:

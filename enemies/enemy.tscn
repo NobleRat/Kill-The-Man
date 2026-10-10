@@ -1,0 +1,58 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Shader" path="res://effects/flash.gdshader" id="2_flash"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(32, 72)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+resource_local_to_scene = true
+shader = ExtResource("2_flash")
+shader_parameter/flash_amount = 0.0
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+
+[node name="Enemy" type="CharacterBody2D"]
+collision_layer = 4
+script = ExtResource("1_enemy")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -36)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Visual" type="Node2D" parent="."]
+material = SubResource("ShaderMaterial_flash")
+
+[node name="Body" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-18, -50, 18, -50, 18, 0, -18, 0)
+
+[node name="Head" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-11, -72, 11, -72, 11, -50, -11, -50)
+
+[node name="Eye" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0.95, 0.15, 0.1, 1)
+polygon = PackedVector2Array(3, -65, 10, -65, 10, -61, 3, -61)
+
+[node name="HealthBar" type="Node2D" parent="."]
+position = Vector2(0, -86)
+
+[node name="Back" type="ColorRect" parent="HealthBar"]
+offset_left = -20.0
+offset_top = -3.0
+offset_right = 20.0
+offset_bottom = 3.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Fill" type="ColorRect" parent="HealthBar"]
+offset_left = -19.0
+offset_top = -2.0
+offset_right = 19.0
+offset_bottom = 2.0
+mouse_filter = 2
+color = Color(0.85, 0.2, 0.15, 1)

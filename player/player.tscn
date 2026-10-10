@@ -1,11 +1,16 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://player/sword.gd" id="2_sword"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(28, 64)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hitbox"]
+size = Vector2(60, 92)
+
 [node name="Player" type="CharacterBody2D"]
+collision_layer = 2
 script = ExtResource("1_player")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
@@ -13,6 +18,23 @@ position = Vector2(0, -32)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Visual" type="Node2D" parent="."]
+
+[node name="Sword" type="Node2D" parent="Visual"]
+position = Vector2(6, -32)
+script = ExtResource("2_sword")
+
+[node name="Blade" type="Polygon2D" parent="Visual/Sword"]
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-6, -1.5, 0, -1.5, 0, -5, 3, -5, 3, -2, 38, -2, 44, 0, 38, 2, 3, 2, 3, 5, 0, 5, 0, 1.5, -6, 1.5)
+
+[node name="Hitbox" type="Area2D" parent="Visual/Sword"]
+collision_layer = 0
+collision_mask = 4
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Visual/Sword/Hitbox"]
+position = Vector2(26, 0)
+shape = SubResource("RectangleShape2D_hitbox")
 
 [node name="Body" type="Polygon2D" parent="Visual"]
 color = Color(0, 0, 0, 1)

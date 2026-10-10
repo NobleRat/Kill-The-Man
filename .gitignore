@@ -1,0 +1,10 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Exported game builds
+/builds/
+
+# Windows system files
+Thumbs.db
+desktop.ini

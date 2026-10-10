@@ -1,0 +1,208 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://world/block.tscn" id="1_block"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
+
+[sub_resource type="Gradient" id="Gradient_sky"]
+offsets = PackedFloat32Array(0, 0.3, 0.5, 0.66, 1)
+colors = PackedColorArray(0.06, 0.03, 0.07, 1, 0.22, 0.07, 0.11, 1, 0.55, 0.18, 0.16, 1, 0.92, 0.52, 0.3, 1, 0.98, 0.8, 0.55, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_sky"]
+gradient = SubResource("Gradient_sky")
+fill_to = Vector2(0, 1)
+
+[node name="TestLevel" type="Node2D"]
+
+[node name="Sky" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Gradient" type="TextureRect" parent="Sky"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_sky")
+expand_mode = 1
+
+[node name="FarLayer" type="Parallax2D" parent="."]
+modulate = Color(0.22, 0.07, 0.09, 1)
+scroll_scale = Vector2(0.15, 0.15)
+repeat_size = Vector2(1152, 0)
+
+[node name="Base" type="ColorRect" parent="FarLayer"]
+offset_top = 440.0
+offset_right = 1152.0
+offset_bottom = 2400.0
+mouse_filter = 2
+
+[node name="Tower1" type="ColorRect" parent="FarLayer"]
+offset_top = 360.0
+offset_right = 70.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower2" type="ColorRect" parent="FarLayer"]
+offset_left = 110.0
+offset_top = 300.0
+offset_right = 150.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower3" type="ColorRect" parent="FarLayer"]
+offset_left = 150.0
+offset_top = 340.0
+offset_right = 260.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower4" type="ColorRect" parent="FarLayer"]
+offset_left = 330.0
+offset_top = 250.0
+offset_right = 380.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower5" type="ColorRect" parent="FarLayer"]
+offset_left = 380.0
+offset_top = 320.0
+offset_right = 460.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower6" type="ColorRect" parent="FarLayer"]
+offset_left = 560.0
+offset_top = 380.0
+offset_right = 710.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower7" type="ColorRect" parent="FarLayer"]
+offset_left = 760.0
+offset_top = 280.0
+offset_right = 820.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower8" type="ColorRect" parent="FarLayer"]
+offset_left = 820.0
+offset_top = 330.0
+offset_right = 910.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="Tower9" type="ColorRect" parent="FarLayer"]
+offset_left = 980.0
+offset_top = 370.0
+offset_right = 1100.0
+offset_bottom = 450.0
+mouse_filter = 2
+
+[node name="MidLayer" type="Parallax2D" parent="."]
+modulate = Color(0.1, 0.03, 0.05, 1)
+scroll_scale = Vector2(0.4, 0.4)
+repeat_size = Vector2(1600, 0)
+
+[node name="Base" type="ColorRect" parent="MidLayer"]
+offset_top = 465.0
+offset_right = 1600.0
+offset_bottom = 2400.0
+mouse_filter = 2
+
+[node name="Pillar1" type="ColorRect" parent="MidLayer"]
+offset_left = 120.0
+offset_top = 230.0
+offset_right = 146.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="Wall" type="ColorRect" parent="MidLayer"]
+offset_left = 260.0
+offset_top = 380.0
+offset_right = 440.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="Pillar2" type="ColorRect" parent="MidLayer"]
+offset_left = 520.0
+offset_top = 180.0
+offset_right = 554.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="ArchLeft" type="ColorRect" parent="MidLayer"]
+offset_left = 800.0
+offset_top = 300.0
+offset_right = 824.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="ArchRight" type="ColorRect" parent="MidLayer"]
+offset_left = 940.0
+offset_top = 300.0
+offset_right = 964.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="ArchTop" type="ColorRect" parent="MidLayer"]
+offset_left = 790.0
+offset_top = 288.0
+offset_right = 974.0
+offset_bottom = 310.0
+mouse_filter = 2
+
+[node name="Ruin" type="ColorRect" parent="MidLayer"]
+offset_left = 1150.0
+offset_top = 330.0
+offset_right = 1270.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="Pillar3" type="ColorRect" parent="MidLayer"]
+offset_left = 1400.0
+offset_top = 260.0
+offset_right = 1420.0
+offset_bottom = 470.0
+mouse_filter = 2
+
+[node name="Blocks" type="Node2D" parent="."]
+
+[node name="LeftWall" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(-900, 990)
+size = Vector2(1000, 2980)
+
+[node name="GroundA" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(1000, 1480)
+size = Vector2(2800, 2000)
+
+[node name="Platform1" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(700, 390)
+size = Vector2(200, 24)
+
+[node name="Platform2" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(1000, 290)
+size = Vector2(180, 24)
+
+[node name="Box" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(1700, 430)
+size = Vector2(160, 100)
+
+[node name="GroundB" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(3775, 1480)
+size = Vector2(2450, 2000)
+
+[node name="Ledge" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(3200, 425)
+size = Vector2(300, 110)
+
+[node name="Platform3" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(3500, 280)
+size = Vector2(200, 24)
+
+[node name="RightWall" parent="Blocks" instance=ExtResource("1_block")]
+position = Vector2(5500, 990)
+size = Vector2(1000, 2980)
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(0, 480)

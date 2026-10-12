@@ -176,6 +176,9 @@ func _handle_jump(delta: float) -> void:
 		# ჰაერში ახლად დაჭერილი ხტომა — ორმაგი ხტომა.
 		_air_jumps_left -= 1
 		_jump(air_jump_speed)
+		# ორმაგი ხტომა დეშს აღადგენს: ჰაერში ისევ შეიძლება დეში, ლოდინის გარეშე.
+		_air_dash_ready = true
+		_dash_cooldown_timer = 0.0
 		_air_jump_pose = 1.0
 		_spawn_effect(JUMP_PUFF, Vector2(0.0, 1.0))
 

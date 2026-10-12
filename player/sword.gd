@@ -39,6 +39,9 @@ const TRAIL_FADE_TIME := 0.12
 ## მოქნევის კვალის ფერი.
 @export var trail_color := Color(1.0, 0.9, 0.75, 0.8)
 
+## true — ახალი მოქნევა ვერ დაიწყება (მაგ. დეშის დროს). დაჭერილი დარტყმა რიგში რჩება.
+var locked := false
+
 var _phase := Phase.READY
 var _phase_time := 0.0
 var _phase_start_angle := 0.0
@@ -74,7 +77,7 @@ func _physics_process(delta: float) -> void:
 
 	match _phase:
 		Phase.READY:
-			if _buffer_timer > 0.0:
+			if _buffer_timer > 0.0 and not locked:
 				_start_swing()
 
 		Phase.WINDUP:
@@ -102,7 +105,7 @@ func _physics_process(delta: float) -> void:
 			# მახვილი ნელ-ნელა მშვიდ მდგომარეობას უბრუნდება.
 			var t := minf(_phase_time / recovery_time, 1.0)
 			_blade.rotation = lerp_angle(_phase_start_angle, deg_to_rad(REST_ANGLE), smoothstep(0.0, 1.0, t))
-			if _buffer_timer > 0.0 and _phase_time >= combo_delay:
+			if _buffer_timer > 0.0 and _phase_time >= combo_delay and not locked:
 				_start_swing()
 			elif _phase_time >= recovery_time:
 				_enter_phase(Phase.READY)

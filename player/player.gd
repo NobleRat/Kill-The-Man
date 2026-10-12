@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## მოთამაშე: სირბილი, ხტომა და მახვილით დარტყმა.
+## მოთამაშე: სირბილი, ხტომა, დეში (Shift) და მახვილით დარტყმა.
 ##
 ## ქვემოთ მოცემული რიცხვები შეგიძლიათ Inspector-ში შეცვალოთ
 ## (აირჩიეთ Player კვანძი) — კოდში შესვლა არ არის საჭირო.
@@ -36,15 +36,52 @@ extends CharacterBody2D
 ## მოქნევის დროს მიწაზე რამდენად სწრაფად ჩერდება.
 @export var attack_friction := 1400.0
 
+@export_group("დეში")
+## დეშის სიჩქარე (პიქსელი წამში). მანძილი ≈ სიჩქარე × ხანგრძლივობა.
+@export var dash_speed := 900.0
+## რამდენ ხანს გრძელდება ერთი დეში (წამი).
+@export var dash_time := 0.16
+## დეშის დასრულებიდან ამდენი წამი უნდა გავიდეს შემდეგ დეშამდე.
+@export var dash_cooldown := 0.3
+## ჰაერშიც შეიძლება დეში (ერთხელ, მიწაზე დაშვებამდე).
+@export var air_dash := true
+## დეშის ღილაკი ამდენი წამით ადრე დაჭერილიც ჩაითვლება.
+@export var dash_buffer_time := 0.15
+## დეშისას სხეული ამდენჯერ იჭიმება სიგრძეში (1 = არ იჭიმება).
+@export_range(1.0, 2.0) var dash_stretch := 1.25
+## დეშისას სხეული წინ ამდენი გრადუსით იხრება.
+@export_range(0.0, 45.0) var dash_lean := 12.0
+## უკან დატოვებული „ანარეკლების“ სიხშირე: ერთი ამდენ წამში.
+@export var ghost_interval := 0.03
+## ანარეკლის სიმკვრივე (0 = უხილავი, 1 = სრულიად შავი).
+@export_range(0.0, 1.0) var ghost_opacity := 0.5
+## რამდენ წამში ქრება ანარეკლი.
+@export var ghost_fade_time := 0.25
+
 @export_group("სხვა")
 ## ამ სიღრმეზე ჩავარდნისას მოთამაშე საწყის ადგილას ბრუნდება.
 @export var fall_limit := 1300.0
+
+const AFTERIMAGE := preload("res://effects/afterimage.gd")
+const DASH_DUST := preload("res://effects/dash_dust.tscn")
+## დეშის შემდეგ სხეული ამდენ წამში სწორდება.
+const DASH_POSE_RECOVERY := 0.12
 
 var _coyote_timer := 0.0
 var _jump_buffer_timer := 0.0
 var _spawn_position := Vector2.ZERO
 ## 1 = მარჯვნივ იყურება, -1 = მარცხნივ.
 var _facing := 1.0
+
+## დეშის დასრულებამდე დარჩენილი დრო (0 = ახლა დეში არ ხდება).
+var _dash_timer := 0.0
+var _dash_direction := 1.0
+var _dash_buffer_timer := 0.0
+var _dash_cooldown_timer := 0.0
+var _air_dash_ready := true
+var _ghost_timer := 0.0
+## 1 = სხეული სრულად დახრილი/გაჭიმულია, 0 = ჩვეულებრივი.
+var _dash_pose := 0.0
 
 @onready var _visual: Node2D = $Visual
 @onready var _sword: Sword = $Visual/Sword
@@ -60,10 +97,18 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("attack"):
 		_sword.request_attack()
 
-	_apply_gravity(delta)
+	_handle_dash(delta)
+	# დეშის დროს სიმძიმე არ მოქმედებს — პირდაპირ ხაზზე მივფრინავთ.
+	if not _is_dashing():
+		_apply_gravity(delta)
 	_handle_jump(delta)
 	_handle_run(delta)
 	move_and_slide()
+
+	# კედელს შევასკდით — დეში აქვე მთავრდება.
+	if _is_dashing() and is_on_wall():
+		_end_dash()
+	_update_pose(delta)
 
 	if global_position.y > fall_limit:
 		_respawn()
@@ -91,6 +136,9 @@ func _handle_jump(delta: float) -> void:
 		_jump_buffer_timer -= delta
 
 	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
+		# მიწაზე დეშის დროს ხტომა დეშს წყვეტს.
+		if _is_dashing():
+			_end_dash()
 		velocity.y = -jump_speed
 		_jump_buffer_timer = 0.0
 		_coyote_timer = 0.0
@@ -101,6 +149,9 @@ func _handle_jump(delta: float) -> void:
 
 
 func _handle_run(delta: float) -> void:
+	# დეშის დროს სიჩქარეს თვითონ დეში მართავს.
+	if _is_dashing():
+		return
 	# მოქნევის დროს მიწაზე სირბილი არ შეიძლება — დარტყმას „წონა“ აქვს.
 	# ჰაერში კი მოთამაშე ძველი სიჩქარით აგრძელებს ფრენას.
 	if _sword.is_busy():
@@ -115,9 +166,100 @@ func _handle_run(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, direction * run_speed, acceleration * control * delta)
 		# პერსონაჟი მოძრაობის მხარეს „იყურება“.
 		_facing = signf(direction)
-		_visual.scale.x = _facing
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, friction * control * delta)
+
+
+func _handle_dash(delta: float) -> void:
+	if Input.is_action_just_pressed("dash"):
+		_dash_buffer_timer = dash_buffer_time
+	else:
+		_dash_buffer_timer -= delta
+	if is_on_floor():
+		_air_dash_ready = true
+
+	if _is_dashing():
+		_dash_timer -= delta
+		if _dash_timer <= 0.0:
+			_end_dash()
+			return
+		velocity = Vector2(_dash_direction * dash_speed, 0.0)
+		_ghost_timer -= delta
+		if _ghost_timer <= 0.0:
+			_spawn_afterimage()
+			_ghost_timer += ghost_interval
+		return
+
+	_dash_cooldown_timer -= delta
+	if _dash_buffer_timer > 0.0 and _can_dash():
+		_start_dash()
+
+
+func _can_dash() -> bool:
+	# მოქნევის შუაში დეში არ შეიძლება (დაჭერილი დეში მოქნევის მერე შესრულდება),
+	# მოქნევის შემდგომ დასვენებას კი დეში წყვეტს.
+	if _dash_cooldown_timer > 0.0 or _sword.is_busy():
+		return false
+	return is_on_floor() or (air_dash and _air_dash_ready)
+
+
+func _start_dash() -> void:
+	_dash_buffer_timer = 0.0
+	if not is_on_floor():
+		_air_dash_ready = false
+	# დეში დაჭერილი მიმართულებით, თუ არაფერია დაჭერილი — იქით, საითაც იყურება.
+	var direction := Input.get_axis("move_left", "move_right")
+	if direction != 0.0:
+		_facing = signf(direction)
+	_dash_direction = _facing
+	_dash_timer = dash_time
+	_dash_pose = 1.0
+	_sword.locked = true
+	velocity = Vector2(_dash_direction * dash_speed, 0.0)
+
+	_spawn_afterimage()
+	_ghost_timer = ghost_interval
+	if is_on_floor():
+		_spawn_dust()
+
+
+func _end_dash() -> void:
+	_dash_timer = 0.0
+	_dash_cooldown_timer = dash_cooldown
+	_sword.locked = false
+	# დეშის მერე ჩვეულებრივი სირბილის სიჩქარით ვაგრძელებთ (კედელთან — 0).
+	velocity.x = _dash_direction * minf(absf(velocity.x), run_speed)
+
+
+func _is_dashing() -> bool:
+	return _dash_timer > 0.0
+
+
+# სხეულის პოზა: დეშისას წინ იხრება და იჭიმება, მერე სწრაფად სწორდება.
+func _update_pose(delta: float) -> void:
+	if not _is_dashing():
+		_dash_pose = move_toward(_dash_pose, 0.0, delta / DASH_POSE_RECOVERY)
+	var stretch := lerpf(1.0, dash_stretch, _dash_pose)
+	_visual.scale = Vector2(_facing * stretch, 1.0 / stretch)
+	_visual.skew = _facing * deg_to_rad(dash_lean) * _dash_pose
+
+
+func _spawn_afterimage() -> void:
+	var ghost := AFTERIMAGE.new()
+	ghost.fade_time = ghost_fade_time
+	var level := get_parent()
+	level.add_child(ghost)
+	# ანარეკლი მოთამაშის უკან უნდა ჩანდეს, არა წინ.
+	level.move_child(ghost, get_index())
+	ghost.copy_from(_visual, ghost_opacity)
+
+
+func _spawn_dust() -> void:
+	var dust: CPUParticles2D = DASH_DUST.instantiate()
+	dust.position = global_position
+	# მტვერი დეშის საწინააღმდეგო მხარეს იფანტება.
+	dust.direction = Vector2(-_dash_direction, -0.3)
+	get_parent().add_child(dust)
 
 
 func _on_sword_swing_started() -> void:
@@ -126,6 +268,8 @@ func _on_sword_swing_started() -> void:
 
 
 func _respawn() -> void:
+	if _is_dashing():
+		_end_dash()
 	global_position = _spawn_position
 	velocity = Vector2.ZERO
 	reset_physics_interpolation()

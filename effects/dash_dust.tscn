@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://effects/one_shot_particles.gd" id="1_particles"]
+
+[sub_resource type="Gradient" id="Gradient_fade"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(1, 1, 1, 0.9, 1, 1, 1, 0)
+
+[sub_resource type="Curve" id="Curve_shrink"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.3), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[node name="DashDust" type="CPUParticles2D"]
+emitting = false
+amount = 10
+lifetime = 0.4
+one_shot = true
+explosiveness = 0.9
+emission_shape = 3
+emission_rect_extents = Vector2(6, 2)
+direction = Vector2(-1, -0.3)
+spread = 25.0
+gravity = Vector2(0, -80)
+initial_velocity_min = 120.0
+initial_velocity_max = 280.0
+damping_min = 400.0
+damping_max = 600.0
+scale_amount_min = 4.0
+scale_amount_max = 8.0
+scale_amount_curve = SubResource("Curve_shrink")
+color = Color(0.09, 0.06, 0.08, 1)
+color_ramp = SubResource("Gradient_fade")
+script = ExtResource("1_particles")

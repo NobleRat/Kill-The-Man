@@ -4,7 +4,11 @@ extends Node2D
 ##
 ## ორი მოქნევა მონაცვლეობით: ზემოდან ქვემოთ და ქვემოდან ზემოთ.
 ## თუ მოქნევის დროს ისევ დააჭერ დარტყმას, შემდეგი მოქნევა რიგში დგება (კომბო).
+## ყოველი მოქნევა მაუსის კურსორისკენ არის მიმართული.
 
+## მოქნევა იწყება და მოთამაშე კურსორის მხარეს უნდა მიტრიალდეს
+## (side: 1 = მარჯვნივ, -1 = მარცხნივ).
+signal turn_requested(side: float)
 ## მახვილმა „ჭრა“ დაიწყო (მოთამაშე ამ დროს წინ გადადგამს ნაბიჯს).
 signal swing_started
 ## მახვილი ვიღაცას მოხვდა.
@@ -14,10 +18,11 @@ enum Phase { READY, WINDUP, ACTIVE, RECOVERY }
 
 ## მახვილის კუთხე მშვიდ მდგომარეობაში (გრადუსი: 0 = წინ, 90 = ქვემოთ, -90 = ზემოთ).
 const REST_ANGLE := 130.0
-## მოქნევები: [საწყისი კუთხე, ბოლო კუთხე] გრადუსებში.
+## მოქნევები: [საწყისი კუთხე, ბოლო კუთხე] გრადუსებში, კურსორის მიმართულების მიმართ
+## (0 = პირდაპირ კურსორისკენ, ორივე მოქნევის შუა კურსორზე მოდის).
 const SWINGS := [
-	[-115.0, 40.0],  # ზემოდან ქვემოთ
-	[65.0, -100.0],  # ქვემოდან ზემოთ
+	[-78.0, 78.0],  # ზემოდან ქვემოთ
+	[82.0, -82.0],  # ქვემოდან ზემოთ
 ]
 const TRAIL_INNER_RADIUS := 16.0
 const TRAIL_OUTER_RADIUS := 52.0
@@ -48,6 +53,8 @@ var _phase_start_angle := 0.0
 var _buffer_timer := 0.0
 var _swing_index := 0
 var _next_swing := 0
+## მიმდინარე მოქნევის მიმართულება (რადიანი): 0 = წინ, უარყოფითი = ზემოთ, დადებითი = ქვემოთ.
+var _aim := 0.0
 var _hit_this_swing: Array[Node] = []
 var _trail_alpha := 0.0
 var _trail_from := 0.0
@@ -83,7 +90,7 @@ func _physics_process(delta: float) -> void:
 		Phase.WINDUP:
 			# მახვილი მოქნევის საწყის კუთხეზე ადის.
 			var t := minf(_phase_time / windup_time, 1.0)
-			_blade.rotation = lerp_angle(_phase_start_angle, deg_to_rad(SWINGS[_swing_index][0]), t)
+			_blade.rotation = lerp_angle(_phase_start_angle, deg_to_rad(SWINGS[_swing_index][0]) + _aim, t)
 			if _phase_time >= windup_time:
 				_enter_phase(Phase.ACTIVE)
 				swing_started.emit()
@@ -93,8 +100,8 @@ func _physics_process(delta: float) -> void:
 			var swing: Array = SWINGS[_swing_index]
 			var t := minf(_phase_time / active_time, 1.0)
 			t = 1.0 - (1.0 - t) * (1.0 - t)
-			_blade.rotation = lerpf(deg_to_rad(swing[0]), deg_to_rad(swing[1]), t)
-			_trail_from = deg_to_rad(swing[0])
+			_blade.rotation = lerpf(deg_to_rad(swing[0]) + _aim, deg_to_rad(swing[1]) + _aim, t)
+			_trail_from = deg_to_rad(swing[0]) + _aim
 			_trail_to = _blade.rotation
 			_trail_alpha = 1.0
 			_check_hits()
@@ -121,7 +128,21 @@ func _start_swing() -> void:
 	_swing_index = _next_swing
 	_next_swing = (_next_swing + 1) % SWINGS.size()
 	_hit_this_swing.clear()
+	_aim_at_cursor()
 	_enter_phase(Phase.WINDUP)
+
+
+# მოთამაშე კურსორის მხარეს ტრიალდება, მოქნევა და დაზიანების ზონა კი კურსორისკენ ბრუნდება.
+func _aim_at_cursor() -> void:
+	var to_cursor := get_global_mouse_position() - global_position
+	var side := signf(to_cursor.x)
+	if side == 0.0:
+		side = signf(global_transform.x.x)
+	turn_requested.emit(side)
+	# მოთამაშე უკვე კურსორისკენ იყურება, ამიტომ კუთხეს „წინ“-ის მიმართ ვითვლით:
+	# -90° (ზემოთ) ... 0° (წინ) ... 90° (ქვემოთ).
+	_aim = Vector2(absf(to_cursor.x), to_cursor.y).angle()
+	_hitbox.rotation = _aim
 
 
 func _enter_phase(phase: Phase) -> void:

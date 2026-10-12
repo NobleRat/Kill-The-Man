@@ -16,13 +16,15 @@ extends CharacterBody2D
 
 @export_group("ხტომა")
 ## ხტომის საწყისი სიჩქარე ზემოთ.
-@export var jump_speed := 720.0
+## ხტომის სიმაღლე ≈ jump_speed² ÷ (2 × gravity) ≈ 195 პიქსელი.
+## მწვერვალამდე დრო ≈ jump_speed ÷ gravity ≈ 0.29 წამი.
+@export var jump_speed := 1350.0
 ## სიმძიმე — რამდენად ძლიერად ექაჩება მიწა.
-@export var gravity := 2000.0
+@export var gravity := 4687.5
 ## დაცემისას სიმძიმე ამდენჯერ მეტია — ხტომა „წონიანი“ გამოდის.
 @export var fall_gravity_multiplier := 1.5
 ## დაცემის მაქსიმალური სიჩქარე.
-@export var max_fall_speed := 1100.0
+@export var max_fall_speed := 1650.0
 ## ხტომის ღილაკს ადრე თუ გაუშვებ, ზემოთ სიჩქარე ამაზე მრავლდება (დაბალი ხტომა).
 @export_range(0.0, 1.0) var jump_cut := 0.45
 ## კიდიდან ჩამოსვლის შემდეგ ამდენი წამი კიდევ შეიძლება ხტომა.
@@ -34,7 +36,7 @@ extends CharacterBody2D
 ## ჰაერში დამატებითი ხტომების რაოდენობა (1 = ორმაგი ხტომა, 0 = გამორთულია).
 @export_range(0, 5) var air_jumps := 1
 ## ჰაერში ხტომის საწყისი სიჩქარე ზემოთ.
-@export var air_jump_speed := 650.0
+@export var air_jump_speed := 1220.0
 ## ჰაერში ხტომისას სხეული ამდენჯერ იჭიმება სიმაღლეში (1 = არ იჭიმება).
 @export_range(1.0, 2.0) var air_jump_stretch := 1.2
 
@@ -77,11 +79,15 @@ const JUMP_PUFF := preload("res://effects/jump_puff.tscn")
 const DASH_POSE_RECOVERY := 0.12
 ## ჰაერში ხტომის შემდეგ სხეული ამდენ წამში სწორდება.
 const AIR_JUMP_POSE_RECOVERY := 0.2
+## W და Space ამ დროის შიგნით თუ დააჭირე, ეს „ერთად დაჭერაა“ — ერთი ხტომა, არა ორმაგი.
+const SIMULTANEOUS_PRESS_TIME := 0.1
 
 var _coyote_timer := 0.0
 var _jump_buffer_timer := 0.0
 ## ჰაერში კიდევ რამდენი ხტომა დარჩა (მიწაზე დაშვებისას ივსება).
 var _air_jumps_left := 0
+## ბოლო ხტომიდან გასული დრო.
+var _time_since_jump := 0.0
 ## 1 = ჰაერში ხტომისგან სხეული სრულად გაჭიმულია, 0 = ჩვეულებრივი.
 var _air_jump_pose := 0.0
 var _spawn_position := Vector2.ZERO
@@ -105,6 +111,7 @@ var _dash_pose := 0.0
 func _ready() -> void:
 	_spawn_position = global_position
 	_sword.swing_started.connect(_on_sword_swing_started)
+	_sword.turn_requested.connect(_on_sword_turn_requested)
 
 
 # ეს ფუნქცია წამში 60-ჯერ ეშვება და ყოველ ჯერზე მოძრაობას ითვლის.
@@ -153,12 +160,16 @@ func _handle_jump(delta: float) -> void:
 	else:
 		_coyote_timer -= delta
 	_jump_buffer_timer -= delta
+	_time_since_jump += delta
 
 	# ღილაკზე ხელი გიჭირავს — მიწაზე დაშვებისთანავე ისევ ხტება.
 	# (დეშს მხოლოდ ახალი დაჭერა წყვეტს, ხელის დაჭერა — არა.)
 	var holding := auto_jump and Input.is_action_pressed("jump") and not _is_dashing()
 	if _coyote_timer > 0.0 and (_jump_buffer_timer > 0.0 or holding):
 		_jump(jump_speed)
+	elif _jump_buffer_timer > 0.0 and _time_since_jump < SIMULTANEOUS_PRESS_TIME:
+		# მეორე ღილაკი პირველთან თითქმის ერთად დააჭირე — ეს იგივე ხტომაა.
+		_jump_buffer_timer = 0.0
 	elif _jump_buffer_timer > 0.0 and _air_jumps_left > 0:
 		# ჰაერში ახლად დაჭერილი ხტომა — ორმაგი ხტომა.
 		_air_jumps_left -= 1
@@ -178,6 +189,7 @@ func _jump(speed: float) -> void:
 	velocity.y = -speed
 	_jump_buffer_timer = 0.0
 	_coyote_timer = 0.0
+	_time_since_jump = 0.0
 
 
 func _handle_run(delta: float) -> void:
@@ -295,6 +307,12 @@ func _spawn_effect(scene: PackedScene, direction: Vector2) -> void:
 	effect.position = global_position
 	effect.direction = direction
 	get_parent().add_child(effect)
+
+
+# დარტყმისას მოთამაშე კურსორის მხარეს ტრიალდება.
+func _on_sword_turn_requested(side: float) -> void:
+	_facing = side
+	_visual.scale.x = side * absf(_visual.scale.x)
 
 
 func _on_sword_swing_started() -> void:

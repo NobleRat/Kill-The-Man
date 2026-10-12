@@ -55,7 +55,7 @@ extends CharacterBody2D
 @export var dash_time := 0.16
 ## დეშის დასრულებიდან ამდენი წამი უნდა გავიდეს შემდეგ დეშამდე.
 @export var dash_cooldown := 0.3
-## ჰაერშიც შეიძლება დეში (ერთხელ, მიწაზე დაშვებამდე).
+## ჰაერშიც შეიძლება დეში — რამდენჯერაც გინდა, ისევე როგორც მიწაზე.
 @export var air_dash := true
 ## დეშის ღილაკი ამდენი წამით ადრე დაჭერილიც ჩაითვლება.
 @export var dash_buffer_time := 0.15
@@ -101,7 +101,6 @@ var _dash_timer := 0.0
 var _dash_direction := 1.0
 var _dash_buffer_timer := 0.0
 var _dash_cooldown_timer := 0.0
-var _air_dash_ready := true
 var _ghost_timer := 0.0
 ## 1 = სხეული სრულად დახრილი/გაჭიმულია, 0 = ჩვეულებრივი.
 var _dash_pose := 0.0
@@ -176,8 +175,7 @@ func _handle_jump(delta: float) -> void:
 		# ჰაერში ახლად დაჭერილი ხტომა — ორმაგი ხტომა.
 		_air_jumps_left -= 1
 		_jump(air_jump_speed)
-		# ორმაგი ხტომა დეშს აღადგენს: ჰაერში ისევ შეიძლება დეში, ლოდინის გარეშე.
-		_air_dash_ready = true
+		# ორმაგი ხტომა დეშს აღადგენს: შემდეგი დეში ლოდინის გარეშე შეიძლება.
 		_dash_cooldown_timer = 0.0
 		_air_jump_pose = 1.0
 		_spawn_effect(JUMP_PUFF, Vector2(0.0, 1.0))
@@ -224,8 +222,6 @@ func _handle_dash(delta: float) -> void:
 		_dash_buffer_timer = dash_buffer_time
 	else:
 		_dash_buffer_timer -= delta
-	if is_on_floor():
-		_air_dash_ready = true
 
 	if _is_dashing():
 		_dash_timer -= delta
@@ -249,13 +245,11 @@ func _can_dash() -> bool:
 	# მოქნევის შემდგომ დასვენებას კი დეში წყვეტს.
 	if _dash_cooldown_timer > 0.0 or _sword.is_busy():
 		return false
-	return is_on_floor() or (air_dash and _air_dash_ready)
+	return is_on_floor() or air_dash
 
 
 func _start_dash() -> void:
 	_dash_buffer_timer = 0.0
-	if not is_on_floor():
-		_air_dash_ready = false
 	# დეში დაჭერილი მიმართულებით, თუ არაფერია დაჭერილი — იქით, საითაც იყურება.
 	var direction := Input.get_axis("move_left", "move_right")
 	if direction != 0.0:

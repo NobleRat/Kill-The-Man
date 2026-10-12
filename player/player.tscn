@@ -2,6 +2,12 @@
 
 [ext_resource type="Script" path="res://player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://player/sword.gd" id="2_sword"]
+[ext_resource type="Shader" path="res://effects/flash.gdshader" id="3_flash"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tint"]
+shader = ExtResource("3_flash")
+shader_parameter/flash_amount = 0.0
+shader_parameter/flash_color = Color(1, 1, 1, 1)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(28, 64)
@@ -18,6 +24,7 @@ position = Vector2(0, -32)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Visual" type="Node2D" parent="."]
+material = SubResource("ShaderMaterial_tint")
 
 [node name="Sword" type="Node2D" parent="Visual"]
 position = Vector2(6, -32)
@@ -37,14 +44,17 @@ position = Vector2(26, 0)
 shape = SubResource("RectangleShape2D_hitbox")
 
 [node name="Body" type="Polygon2D" parent="Visual"]
+use_parent_material = true
 color = Color(0, 0, 0, 1)
 polygon = PackedVector2Array(-15, -44, 15, -44, 15, 0, -15, 0)
 
 [node name="Head" type="Polygon2D" parent="Visual"]
+use_parent_material = true
 color = Color(0, 0, 0, 1)
 polygon = PackedVector2Array(-10, -64, 10, -64, 10, -44, -10, -44)
 
 [node name="Eye" type="Polygon2D" parent="Visual"]
+use_parent_material = true
 color = Color(1, 0.9, 0.75, 1)
 polygon = PackedVector2Array(3, -57, 9, -57, 9, -53, 3, -53)
 

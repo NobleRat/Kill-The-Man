@@ -22,12 +22,21 @@ const DEATH_BURST := preload("res://effects/death_burst.tscn")
 @export var friction := 1600.0
 
 @export_group("დარტყმის რეაქცია")
-## დარტყმისას რა სიჩქარით გადაიწევს უკან.
+## დარტყმისას რა სიჩქარით გადაიწევს უკან (მახვილის knockback ამაზე მრავლდება).
 @export var knockback_speed := 160.0
 ## დარტყმისას რამდენად ახტება ზემოთ.
 @export var knockback_hop := 120.0
 ## დარტყმის შემდეგ ამდენ წამს ვერ მოძრაობს.
 @export var stun_time := 0.3
+
+@export_group("დარტყმის შეგრძნება")
+## თეთრი ციმციმის ხანგრძლივობა დარტყმისას (წამი).
+@export var flash_time := 0.15
+## სიკვდილისას თამაშის შეჩერება (წამი).
+## (ჩვეულებრივი დარტყმის შეჩერება/შერყევა მახვილის სკრიპტშია: sword.gd.)
+@export var death_hitstop := 0.14
+## სიკვდილისას ეკრანის შერყევა (პიქსელი).
+@export var death_shake := 12.0
 
 var _health := 0
 ## 1 = მარჯვნივ მიდის, -1 = მარცხნივ.
@@ -74,8 +83,9 @@ func _patrol() -> void:
 	_visual.scale.x = _direction
 
 
-## მახვილი იძახებს, როცა მტერს მოხვდება. `direction` — დარტყმის მიმართულება.
-func take_hit(damage: int, direction: Vector2) -> void:
+## მახვილი იძახებს, როცა მტერს მოხვდება. `direction` — დარტყმის მიმართულება,
+## `knockback` — რამდენჯერ ძლიერად გადააგდოს (1 = ჩვეულებრივად).
+func take_hit(damage: int, direction: Vector2, knockback := 1.0) -> void:
 	if _health <= 0:
 		return
 	_health -= damage
@@ -84,7 +94,7 @@ func take_hit(damage: int, direction: Vector2) -> void:
 	_spawn_effect(HIT_SPARK, global_position + Vector2(-direction.x * 10.0, -40.0), direction)
 
 	# უკან გადაგდება და დამრტყმელისკენ მობრუნება.
-	velocity = Vector2(direction.x * knockback_speed, -knockback_hop)
+	velocity = Vector2(direction.x * knockback_speed, -knockback_hop) * knockback
 	_stun_timer = stun_time
 	if direction.x != 0.0:
 		_direction = -signf(direction.x)
@@ -92,20 +102,17 @@ func take_hit(damage: int, direction: Vector2) -> void:
 
 	if _health <= 0:
 		_die()
-	else:
-		Effects.hitstop(0.07)
-		Effects.shake(5.0)
 
 
 func _die() -> void:
-	Effects.hitstop(0.14)
-	Effects.shake(12.0)
+	Effects.hitstop(death_hitstop)
+	Effects.shake(death_shake)
 	_health_bar.visible = false
 	set_physics_process(false)
 	$CollisionShape2D.set_deferred("disabled", true)
 
 	# შეჩერების დროს მტერი თეთრად ანათებს, მერე კი ნამსხვრევებად იშლება.
-	await get_tree().create_timer(0.14, true, false, true).timeout
+	await get_tree().create_timer(death_hitstop, true, false, true).timeout
 	_spawn_effect(DEATH_BURST, global_position + Vector2(0.0, -36.0), Vector2.UP)
 	queue_free()
 
@@ -115,7 +122,7 @@ func _flash() -> void:
 	if _flash_tween:
 		_flash_tween.kill()
 	_flash_tween = create_tween()
-	_flash_tween.tween_property(flash_material, "shader_parameter/flash_amount", 0.0, 0.15).from(1.0)
+	_flash_tween.tween_property(flash_material, "shader_parameter/flash_amount", 0.0, flash_time).from(1.0)
 
 
 func _update_health_bar() -> void:

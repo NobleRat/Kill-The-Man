@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## მოთამაშე: სირბილი, ხტომა, დეში (Shift) და მახვილით დარტყმა.
+## მოთამაშე: სირბილი, ხტომა (ორმაგიც), დეში (Shift) და მახვილით დარტყმა.
 ##
 ## ქვემოთ მოცემული რიცხვები შეგიძლიათ Inspector-ში შეცვალოთ
 ## (აირჩიეთ Player კვანძი) — კოდში შესვლა არ არის საჭირო.
@@ -29,6 +29,14 @@ extends CharacterBody2D
 @export var coyote_time := 0.1
 ## დაცემამდე ამდენი წამით ადრე დაჭერილი ხტომაც ჩაითვლება.
 @export var jump_buffer_time := 0.12
+## ხტომის ღილაკზე ხელი თუ გიჭირავს, მიწაზე დაშვებისთანავე ისევ ხტება.
+@export var auto_jump := true
+## ჰაერში დამატებითი ხტომების რაოდენობა (1 = ორმაგი ხტომა, 0 = გამორთულია).
+@export_range(0, 5) var air_jumps := 1
+## ჰაერში ხტომის საწყისი სიჩქარე ზემოთ.
+@export var air_jump_speed := 650.0
+## ჰაერში ხტომისას სხეული ამდენჯერ იჭიმება სიმაღლეში (1 = არ იჭიმება).
+@export_range(1.0, 2.0) var air_jump_stretch := 1.2
 
 @export_group("ბრძოლა")
 ## მოქნევისას წინ „გადადგმული ნაბიჯის“ სიჩქარე.
@@ -64,11 +72,18 @@ extends CharacterBody2D
 
 const AFTERIMAGE := preload("res://effects/afterimage.gd")
 const DASH_DUST := preload("res://effects/dash_dust.tscn")
+const JUMP_PUFF := preload("res://effects/jump_puff.tscn")
 ## დეშის შემდეგ სხეული ამდენ წამში სწორდება.
 const DASH_POSE_RECOVERY := 0.12
+## ჰაერში ხტომის შემდეგ სხეული ამდენ წამში სწორდება.
+const AIR_JUMP_POSE_RECOVERY := 0.2
 
 var _coyote_timer := 0.0
 var _jump_buffer_timer := 0.0
+## ჰაერში კიდევ რამდენი ხტომა დარჩა (მიწაზე დაშვებისას ივსება).
+var _air_jumps_left := 0
+## 1 = ჰაერში ხტომისგან სხეული სრულად გაჭიმულია, 0 = ჩვეულებრივი.
+var _air_jump_pose := 0.0
 var _spawn_position := Vector2.ZERO
 ## 1 = მარჯვნივ იყურება, -1 = მარცხნივ.
 var _facing := 1.0
@@ -123,29 +138,46 @@ func _apply_gravity(delta: float) -> void:
 	velocity.y = minf(velocity.y + current_gravity * delta, max_fall_speed)
 
 
+# ხტომის ყოველი ახალი დაჭერა. W და Space ცალ-ცალკე ითვლება:
+# W-ზე ხელი თუ გიჭირავს და Space-ს დააჭერ, ესეც ახალი დაჭერაა (ორმაგი ხტომისთვის).
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("jump"):
+		_jump_buffer_timer = jump_buffer_time
+
+
 func _handle_jump(delta: float) -> void:
 	# ორი „მეხსიერება“: ცოტა ხნის წინ მიწაზე ვიდექი? ცოტა ხნის წინ დავაჭირე ხტომას?
 	if is_on_floor():
 		_coyote_timer = coyote_time
+		_air_jumps_left = air_jumps
 	else:
 		_coyote_timer -= delta
+	_jump_buffer_timer -= delta
 
-	if Input.is_action_just_pressed("jump"):
-		_jump_buffer_timer = jump_buffer_time
-	else:
-		_jump_buffer_timer -= delta
-
-	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
-		# მიწაზე დეშის დროს ხტომა დეშს წყვეტს.
-		if _is_dashing():
-			_end_dash()
-		velocity.y = -jump_speed
-		_jump_buffer_timer = 0.0
-		_coyote_timer = 0.0
+	# ღილაკზე ხელი გიჭირავს — მიწაზე დაშვებისთანავე ისევ ხტება.
+	# (დეშს მხოლოდ ახალი დაჭერა წყვეტს, ხელის დაჭერა — არა.)
+	var holding := auto_jump and Input.is_action_pressed("jump") and not _is_dashing()
+	if _coyote_timer > 0.0 and (_jump_buffer_timer > 0.0 or holding):
+		_jump(jump_speed)
+	elif _jump_buffer_timer > 0.0 and _air_jumps_left > 0:
+		# ჰაერში ახლად დაჭერილი ხტომა — ორმაგი ხტომა.
+		_air_jumps_left -= 1
+		_jump(air_jump_speed)
+		_air_jump_pose = 1.0
+		_spawn_effect(JUMP_PUFF, Vector2(0.0, 1.0))
 
 	# ღილაკი ადრე გაუშვი — ხტომა დაბალი გამოდის.
 	if Input.is_action_just_released("jump") and velocity.y < 0.0:
 		velocity.y *= jump_cut
+
+
+func _jump(speed: float) -> void:
+	# დეშის დროს ხტომა დეშს წყვეტს.
+	if _is_dashing():
+		_end_dash()
+	velocity.y = -speed
+	_jump_buffer_timer = 0.0
+	_coyote_timer = 0.0
 
 
 func _handle_run(delta: float) -> void:
@@ -220,7 +252,8 @@ func _start_dash() -> void:
 	_spawn_afterimage()
 	_ghost_timer = ghost_interval
 	if is_on_floor():
-		_spawn_dust()
+		# მტვერი დეშის საწინააღმდეგო მხარეს იფანტება.
+		_spawn_effect(DASH_DUST, Vector2(-_dash_direction, -0.3))
 
 
 func _end_dash() -> void:
@@ -235,11 +268,13 @@ func _is_dashing() -> bool:
 	return _dash_timer > 0.0
 
 
-# სხეულის პოზა: დეშისას წინ იხრება და იჭიმება, მერე სწრაფად სწორდება.
+# სხეულის პოზა: დეშისას წინ იხრება და სიგრძეში იჭიმება,
+# ჰაერში ხტომისას — სიმაღლეში. მერე სწრაფად სწორდება.
 func _update_pose(delta: float) -> void:
 	if not _is_dashing():
 		_dash_pose = move_toward(_dash_pose, 0.0, delta / DASH_POSE_RECOVERY)
-	var stretch := lerpf(1.0, dash_stretch, _dash_pose)
+	_air_jump_pose = move_toward(_air_jump_pose, 0.0, delta / AIR_JUMP_POSE_RECOVERY)
+	var stretch := lerpf(1.0, dash_stretch, _dash_pose) / lerpf(1.0, air_jump_stretch, _air_jump_pose)
 	_visual.scale = Vector2(_facing * stretch, 1.0 / stretch)
 	_visual.skew = _facing * deg_to_rad(dash_lean) * _dash_pose
 
@@ -254,12 +289,12 @@ func _spawn_afterimage() -> void:
 	ghost.copy_from(_visual, ghost_opacity)
 
 
-func _spawn_dust() -> void:
-	var dust: CPUParticles2D = DASH_DUST.instantiate()
-	dust.position = global_position
-	# მტვერი დეშის საწინააღმდეგო მხარეს იფანტება.
-	dust.direction = Vector2(-_dash_direction, -0.3)
-	get_parent().add_child(dust)
+# მტვრის ეფექტი ფეხებთან; direction — საითკენ იფანტება.
+func _spawn_effect(scene: PackedScene, direction: Vector2) -> void:
+	var effect: CPUParticles2D = scene.instantiate()
+	effect.position = global_position
+	effect.direction = direction
+	get_parent().add_child(effect)
 
 
 func _on_sword_swing_started() -> void:

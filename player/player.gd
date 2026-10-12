@@ -290,20 +290,6 @@ func _update_pose(delta: float) -> void:
 	_visual.skew = _facing * deg_to_rad(dash_lean) * _dash_pose
 
 
-# ხატვამდე ეშვება (მოძრაობის გამოთვლის მერე), ამიტომ ფერი ზუსტად მიმდინარე ფაზას ემთხვევა.
-func _process(_delta: float) -> void:
-	_update_attack_tint()
-
-
-# დარტყმის ფაზის ფერი: მომზადებისას ქარვისფერი, დასვენებისას ლურჯი
-# (ფერები და სიძლიერე მახვილის სკრიპტშია: Sword → „ფაზები“).
-func _update_attack_tint() -> void:
-	var tint := _sword.get_phase_tint()
-	var tint_material := _visual.material as ShaderMaterial
-	tint_material.set_shader_parameter("flash_color", tint)
-	tint_material.set_shader_parameter("flash_amount", tint.a)
-
-
 func _spawn_afterimage() -> void:
 	var ghost := AFTERIMAGE.new()
 	ghost.fade_time = ghost_fade_time

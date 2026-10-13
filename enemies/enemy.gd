@@ -1,8 +1,9 @@
 extends CharacterBody2D
-## მტერი: დადის აქეთ-იქით. დარტყმისას უკან ეგდება და ციმციმებს,
+## მტერი-„მანეკენი“: დადის აქეთ-იქით. დარტყმისას უკან ეგდება და ციმციმებს,
 ## სიცოცხლე რომ გაუთავდება — ნამსხვრევებად იშლება.
 ##
-## ჯერ თავს არ ესხმის — ეს შემდეგი ნაბიჯია.
+## თავს არ ესხმის. თავდამსხმელი მტერი — melee_enemy.gd — ამ სკრიპტზეა აგებული:
+## დარტყმის მიღება და სიკვდილი ორივესთვის აქ არის დაწერილი.
 
 const HIT_SPARK := preload("res://effects/hit_spark.tscn")
 const DEATH_BURST := preload("res://effects/death_burst.tscn")
@@ -65,22 +66,36 @@ func _physics_process(delta: float) -> void:
 		if is_on_floor():
 			velocity.x = move_toward(velocity.x, 0.0, friction * delta)
 	else:
-		_patrol()
+		_act(delta)
 
 	move_and_slide()
 
 
+## რას აკეთებს, როცა გაბრუებული არ არის. მანეკენი მხოლოდ დადის;
+## სხვა მტრები (მაგ. melee_enemy.gd) ამ ფუნქციას თავისით ცვლიან.
+func _act(_delta: float) -> void:
+	_patrol()
+
+
 func _patrol() -> void:
-	# საზღვარს ან კედელს მიადგა — მობრუნდეს.
+	# საზღვარს, კედელს ან კიდეს მიადგა — მობრუნდეს.
 	var offset := global_position.x - _start_x
 	var past_right := offset > patrol_distance and _direction > 0.0
 	var past_left := offset < -patrol_distance and _direction < 0.0
 	var wall_ahead := is_on_wall() and signf(get_wall_normal().x) == -_direction
-	if past_right or past_left or wall_ahead:
+	var ledge_ahead := is_on_floor() and not _has_floor_ahead(_direction)
+	if past_right or past_left or wall_ahead or ledge_ahead:
 		_direction = -_direction
 
 	velocity.x = _direction * walk_speed
 	_visual.scale.x = _direction
+
+
+## true — წინ (`direction` მხარეს) ფეხქვეშ მიწაა; false — კიდეა, შეიძლება ჩავარდეს.
+func _has_floor_ahead(direction: float) -> bool:
+	var from := global_position + Vector2(direction * 22.0, -4.0)
+	var query := PhysicsRayQueryParameters2D.create(from, from + Vector2(0.0, 30.0), collision_mask, [get_rid()])
+	return not get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 
 ## მახვილი იძახებს, როცა მტერს მოხვდება. `direction` — დარტყმის მიმართულება,

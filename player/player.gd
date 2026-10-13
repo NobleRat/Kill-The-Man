@@ -70,6 +70,15 @@ extends CharacterBody2D
 ## რამდენ წამში ქრება ანარეკლი.
 @export var ghost_fade_time := 0.25
 
+@export_group("მტრის დარტყმა")
+## მტრის დარტყმისას რა სიჩქარით გადაიწევს უკან.
+## (სიცოცხლე ჯერ არ არის — დარტყმა მხოლოდ უკან აგდებს.)
+@export var hurt_knockback_speed := 420.0
+## მტრის დარტყმისას რამდენად ახტება ზემოთ.
+@export var hurt_knockback_hop := 500.0
+## დარტყმის შემდეგ ამდენ წამს სირბილს და დეშს ვერ მართავ.
+@export var hurt_stun_time := 0.25
+
 @export_group("სხვა")
 ## ამ სიღრმეზე ჩავარდნისას მოთამაშე საწყის ადგილას ბრუნდება.
 @export var fall_limit := 1300.0
@@ -104,12 +113,16 @@ var _dash_cooldown_timer := 0.0
 var _ghost_timer := 0.0
 ## 1 = სხეული სრულად დახრილი/გაჭიმულია, 0 = ჩვეულებრივი.
 var _dash_pose := 0.0
+## მტრის დარტყმის შემდეგ მართვის დაბრუნებამდე დარჩენილი დრო.
+var _hurt_timer := 0.0
 
 @onready var _visual: Node2D = $Visual
 @onready var _sword: Sword = $Visual/Sword
 
 
 func _ready() -> void:
+	# მტრები მოთამაშეს ამ ჯგუფით პოულობენ.
+	add_to_group("player")
 	_spawn_position = global_position
 	_sword.swing_started.connect(_on_sword_swing_started)
 	_sword.turn_requested.connect(_on_sword_turn_requested)
@@ -120,6 +133,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("attack"):
 		_sword.request_attack()
 
+	_hurt_timer -= delta
 	_handle_dash(delta)
 	# დეშის დროს სიმძიმე არ მოქმედებს — პირდაპირ ხაზზე მივფრინავთ.
 	if not _is_dashing():
@@ -201,7 +215,8 @@ func _handle_run(delta: float) -> void:
 		return
 	# მოქნევის დროს მიწაზე სირბილი არ შეიძლება — დარტყმას „წონა“ აქვს.
 	# ჰაერში კი მოთამაშე ძველი სიჩქარით აგრძელებს ფრენას.
-	if _sword.is_busy():
+	# მტრის დარტყმის შემდეგაც ასეა — უკან გადაგდება შენს სირბილს არ წაეშლება.
+	if _sword.is_busy() or _hurt_timer > 0.0:
 		if is_on_floor():
 			velocity.x = move_toward(velocity.x, 0.0, attack_friction * delta)
 		return
@@ -243,7 +258,7 @@ func _handle_dash(delta: float) -> void:
 func _can_dash() -> bool:
 	# მოქნევის შუაში დეში არ შეიძლება (დაჭერილი დეში მოქნევის მერე შესრულდება),
 	# მოქნევის შემდგომ დასვენებას კი დეში წყვეტს.
-	if _dash_cooldown_timer > 0.0 or _sword.is_busy():
+	if _dash_cooldown_timer > 0.0 or _sword.is_busy() or _hurt_timer > 0.0:
 		return false
 	return is_on_floor() or air_dash
 
@@ -317,6 +332,15 @@ func _on_sword_turn_requested(side: float) -> void:
 func _on_sword_swing_started() -> void:
 	if is_on_floor():
 		velocity.x = _facing * lunge_speed
+
+
+## მტერი იძახებს, როცა მოთამაშეს მოხვდება. `direction` — დარტყმის მიმართულება.
+## სიცოცხლე ჯერ არ არის, ამიტომ `damage` ჯერ არაფერს აკლებს — მოთამაშე მხოლოდ უკან ვარდება.
+func take_hit(_damage: int, direction: Vector2, knockback := 1.0) -> void:
+	if _is_dashing():
+		_end_dash()
+	velocity = Vector2(direction.x * hurt_knockback_speed, -hurt_knockback_hop) * knockback
+	_hurt_timer = hurt_stun_time
 
 
 func _respawn() -> void:

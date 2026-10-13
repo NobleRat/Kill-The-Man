@@ -1,0 +1,81 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://enemies/melee_enemy.gd" id="1_melee"]
+[ext_resource type="Shader" path="res://effects/flash.gdshader" id="2_flash"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(32, 72)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_attack"]
+size = Vector2(70, 76)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+resource_local_to_scene = true
+shader = ExtResource("2_flash")
+shader_parameter/flash_amount = 0.0
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/tint_amount = 0.0
+shader_parameter/tint_color = Color(1, 0.12, 0.08, 1)
+
+[node name="MeleeEnemy" type="CharacterBody2D"]
+collision_layer = 4
+script = ExtResource("1_melee")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -36)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Visual" type="Node2D" parent="."]
+material = SubResource("ShaderMaterial_flash")
+
+[node name="Body" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-18, -50, 18, -50, 18, 0, -18, 0)
+
+[node name="Head" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-6, -70, 16, -70, 16, -50, -6, -50)
+
+[node name="Eye" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0.95, 0.15, 0.1, 1)
+polygon = PackedVector2Array(8, -64, 15, -64, 15, -60, 8, -60)
+
+[node name="Weapon" type="Polygon2D" parent="Visual"]
+position = Vector2(12, -42)
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-4, -2, 8, -2, 8, -6, 11, -6, 11, -4, 42, -4, 48, 0, 42, 4, 11, 4, 11, 6, 8, 6, 8, 2, -4, 2)
+
+[node name="Slash" type="Node2D" parent="Visual"]
+position = Vector2(12, -42)
+
+[node name="Hitbox" type="Area2D" parent="Visual"]
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Visual/Hitbox"]
+position = Vector2(45, -38)
+shape = SubResource("RectangleShape2D_attack")
+
+[node name="HealthBar" type="Node2D" parent="."]
+position = Vector2(0, -86)
+
+[node name="Back" type="ColorRect" parent="HealthBar"]
+offset_left = -20.0
+offset_top = -3.0
+offset_right = 20.0
+offset_bottom = 3.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Fill" type="ColorRect" parent="HealthBar"]
+offset_left = -19.0
+offset_top = -2.0
+offset_right = 19.0
+offset_bottom = 2.0
+mouse_filter = 2
+color = Color(0.85, 0.2, 0.15, 1)

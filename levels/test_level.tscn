@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://enemies/enemy.tscn" id="4_enemy"]
 [ext_resource type="PackedScene" path="res://enemies/melee_enemy.tscn" id="5_melee"]
 [ext_resource type="PackedScene" path="res://enemies/ranged_enemy.tscn" id="6_ranged"]
+[ext_resource type="PackedScene" path="res://enemies/heavy_enemy.tscn" id="7_heavy"]
 
 [sub_resource type="Gradient" id="Gradient_sky"]
 offsets = PackedFloat32Array(0, 0.3, 0.5, 0.66, 1)
@@ -194,8 +195,8 @@ position = Vector2(1700, 430)
 size = Vector2(160, 100)
 
 [node name="GroundB" parent="Blocks" instance=ExtResource("1_block")]
-position = Vector2(3775, 1480)
-size = Vector2(2450, 2000)
+position = Vector2(4275, 1480)
+size = Vector2(3450, 2000)
 
 [node name="Ledge" parent="Blocks" instance=ExtResource("1_block")]
 position = Vector2(3200, 425)
@@ -206,7 +207,7 @@ position = Vector2(3500, 280)
 size = Vector2(200, 24)
 
 [node name="RightWall" parent="Blocks" instance=ExtResource("1_block")]
-position = Vector2(5500, 990)
+position = Vector2(6500, 990)
 size = Vector2(1000, 2980)
 
 [node name="Enemies" type="Node2D" parent="."]
@@ -242,6 +243,9 @@ position = Vector2(2250, 480)
 position = Vector2(4500, 480)
 max_health = 4
 projectile_damage = 30
+
+[node name="HeavyEnemy1" parent="Enemies" instance=ExtResource("7_heavy")]
+position = Vector2(5500, 480)
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(0, 480)

@@ -2,8 +2,8 @@ extends CharacterBody2D
 ## მტერი-„მანეკენი“: დადის აქეთ-იქით. დარტყმისას უკან ეგდება და ციმციმებს,
 ## სიცოცხლე რომ გაუთავდება — ნამსხვრევებად იშლება.
 ##
-## თავს არ ესხმის. თავდამსხმელი მტრები — melee_enemy.gd (ხმლიანი) და ranged_enemy.gd
-## (შორიდან მსროლელი) — ამ სკრიპტზეა აგებული: დარტყმის მიღება, სიკვდილი და
+## თავს არ ესხმის. თავდამსხმელი მტრები — melee_enemy.gd (ხმლიანი), ranged_enemy.gd
+## (შორიდან მსროლელი) და heavy_enemy.gd (მძიმე) — ამ სკრიპტზეა აგებული: დარტყმის მიღება, სიკვდილი და
 ## საერთო დამხმარე ფუნქციები ყველასთვის აქ არის დაწერილი.
 
 const HIT_SPARK := preload("res://effects/hit_spark.tscn")
@@ -18,6 +18,9 @@ const DEATH_BURST := preload("res://effects/death_burst.tscn")
 @export var walk_speed := 70.0
 ## საწყისი ადგილიდან რამდენ პიქსელზე დადის მარცხნივ და მარჯვნივ.
 @export var patrol_distance := 120.0
+## კიდის შემოწმება: ცენტრიდან რამდენი პიქსელით წინ ამოწმებს, მიწა თუ არის ფეხქვეშ
+## (დიდ მტერს მეტი სჭირდება).
+@export var ledge_check_distance := 22.0
 ## სიმძიმე.
 @export var gravity := 2000.0
 ## რამდენად სწრაფად ჩერდება მიწაზე.
@@ -132,7 +135,7 @@ func _set_tint(amount: float) -> void:
 
 ## true — წინ (`direction` მხარეს) ფეხქვეშ მიწაა; false — კიდეა, შეიძლება ჩავარდეს.
 func _has_floor_ahead(direction: float) -> bool:
-	var from := global_position + Vector2(direction * 22.0, -4.0)
+	var from := global_position + Vector2(direction * ledge_check_distance, -4.0)
 	var query := PhysicsRayQueryParameters2D.create(from, from + Vector2(0.0, 30.0), collision_mask, [get_rid()])
 	return not get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -146,16 +149,20 @@ func take_hit(damage: int, direction: Vector2, knockback := 1.0) -> void:
 	_update_health_bar()
 	_flash()
 	_spawn_effect(HIT_SPARK, global_position + Vector2(-direction.x * 10.0, -40.0), direction)
+	_react_to_hit(direction, knockback)
 
-	# უკან გადაგდება და დამრტყმელისკენ მობრუნება.
+	if _health <= 0:
+		_die()
+
+
+## დარტყმაზე რეაქცია: უკან გადაგდება, გაბრუება და დამრტყმელისკენ მობრუნება.
+## მძიმე მტერი (heavy_enemy.gd) ამას თავისით ცვლის — მას ჩვეულებრივი დარტყმა ვერ ძრავს.
+func _react_to_hit(direction: Vector2, knockback: float) -> void:
 	velocity = Vector2(direction.x * knockback_speed, -knockback_hop) * knockback
 	_stun_timer = stun_time
 	if direction.x != 0.0:
 		_direction = -signf(direction.x)
 		_visual.scale.x = _direction
-
-	if _health <= 0:
-		_die()
 
 
 func _die() -> void:

@@ -59,20 +59,18 @@ var _state := State.PATROL
 var _state_time := 0.0
 ## ამ ჭრამ მოთამაშეს უკვე მოარტყა (ერთ ჭრაში — მხოლოდ ერთხელ).
 var _hit_player := false
-var _player: Node2D
 var _slash_alpha := 0.0
 var _slash_to := 0.0
 
 @onready var _weapon: Node2D = $Visual/Weapon
 @onready var _hitbox: Area2D = $Visual/Hitbox
 @onready var _slash: Node2D = $Visual/Slash
-@onready var _material: ShaderMaterial = $Visual.material
 
 
 func _ready() -> void:
 	super()
 	_weapon.rotation = deg_to_rad(WEAPON_REST)
-	_material.set_shader_parameter("tint_color", windup_color)
+	(_visual.material as ShaderMaterial).set_shader_parameter("tint_color", windup_color)
 	_slash.draw.connect(_draw_slash)
 
 
@@ -140,16 +138,6 @@ func _chase() -> void:
 		velocity.x = _direction * chase_speed
 
 
-## მოთამაშე ახლოსაა? (გვერდულად `range_x`-ზე, სიმაღლით `range_y`-ზე ახლოს.)
-func _player_within(range_x: float, range_y: float) -> bool:
-	if not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player") as Node2D
-		if _player == null:
-			return false
-	var offset := _player.global_position - global_position
-	return absf(offset.x) <= range_x and absf(offset.y) <= range_y
-
-
 func _check_hit() -> void:
 	if _hit_player:
 		return
@@ -176,15 +164,6 @@ func _set_state(state: State) -> void:
 	_state_time = 0.0
 	if state == State.ATTACK:
 		_hit_player = false
-
-
-func _brake(delta: float) -> void:
-	if is_on_floor():
-		velocity.x = move_toward(velocity.x, 0.0, friction * delta)
-
-
-func _set_tint(amount: float) -> void:
-	_material.set_shader_parameter("tint_amount", amount)
 
 
 func _process(delta: float) -> void:

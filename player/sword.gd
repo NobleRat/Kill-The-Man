@@ -206,7 +206,11 @@ func _check_hits() -> void:
 	var facing := signf(global_transform.x.x)
 	var finisher := _is_finisher()
 	var landed := false
-	for body in _hitbox.get_overlapping_bodies():
+	var targets := []
+	targets.append_array(_hitbox.get_overlapping_bodies())
+	# მტრის ჭურვებიც — მახვილით მათი განადგურება შეიძლება.
+	targets.append_array(_hitbox.get_overlapping_areas())
+	for body in targets:
 		# ერთ მოქნევაში ერთ მტერს მხოლოდ ერთხელ ვურტყამთ.
 		if body in _hit_this_swing or not body.has_method("take_hit"):
 			continue

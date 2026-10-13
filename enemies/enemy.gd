@@ -2,8 +2,9 @@ extends CharacterBody2D
 ## მტერი-„მანეკენი“: დადის აქეთ-იქით. დარტყმისას უკან ეგდება და ციმციმებს,
 ## სიცოცხლე რომ გაუთავდება — ნამსხვრევებად იშლება.
 ##
-## თავს არ ესხმის. თავდამსხმელი მტერი — melee_enemy.gd — ამ სკრიპტზეა აგებული:
-## დარტყმის მიღება და სიკვდილი ორივესთვის აქ არის დაწერილი.
+## თავს არ ესხმის. თავდამსხმელი მტრები — melee_enemy.gd (ხმლიანი) და ranged_enemy.gd
+## (შორიდან მსროლელი) — ამ სკრიპტზეა აგებული: დარტყმის მიღება, სიკვდილი და
+## საერთო დამხმარე ფუნქციები ყველასთვის აქ არის დაწერილი.
 
 const HIT_SPARK := preload("res://effects/hit_spark.tscn")
 const DEATH_BURST := preload("res://effects/death_burst.tscn")
@@ -39,12 +40,18 @@ const DEATH_BURST := preload("res://effects/death_burst.tscn")
 ## სიკვდილისას ეკრანის შერყევა (პიქსელი).
 @export var death_shake := 12.0
 
+@export_group("სხვა")
+## ამ სიღრმეზე ჩავარდნისას (მაგ. ორმოში გადაგდებული) მტერი ქრება.
+@export var fall_limit := 1300.0
+
 var _health := 0
 ## 1 = მარჯვნივ მიდის, -1 = მარცხნივ.
 var _direction := 1.0
 var _stun_timer := 0.0
 var _start_x := 0.0
 var _flash_tween: Tween
+## მოთამაშე (თავდამსხმელი მტრები მას ჯგუფით „player“ პოულობენ).
+var _player: Node2D
 
 @onready var _visual: Node2D = $Visual
 @onready var _health_bar: Node2D = $HealthBar
@@ -70,6 +77,9 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	if global_position.y > fall_limit:
+		queue_free()
+
 
 ## რას აკეთებს, როცა გაბრუებული არ არის. მანეკენი მხოლოდ დადის;
 ## სხვა მტრები (მაგ. melee_enemy.gd) ამ ფუნქციას თავისით ცვლიან.
@@ -89,6 +99,35 @@ func _patrol() -> void:
 
 	velocity.x = _direction * walk_speed
 	_visual.scale.x = _direction
+
+
+## მოთამაშე ახლოსაა? (გვერდულად `range_x`-ზე, სიმაღლით `range_y`-ზე ახლოს.)
+func _player_within(range_x: float, range_y: float) -> bool:
+	if not is_instance_valid(_player):
+		_player = get_tree().get_first_node_in_group("player") as Node2D
+		if _player == null:
+			return false
+	var offset := _player.global_position - global_position
+	return absf(offset.x) <= range_x and absf(offset.y) <= range_y
+
+
+## მოთამაშისკენ ტრიალდება.
+func _face_player() -> void:
+	var dx := _player.global_position.x - global_position.x
+	if dx != 0.0:
+		_direction = signf(dx)
+	_visual.scale.x = _direction
+
+
+## მიწაზე ნელ-ნელა ჩერდება.
+func _brake(delta: float) -> void:
+	if is_on_floor():
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta)
+
+
+## შეფერვა: 0 = ჩვეულებრივი ფერი, 1 = მთლიანად tint_color (flash.gdshader).
+func _set_tint(amount: float) -> void:
+	(_visual.material as ShaderMaterial).set_shader_parameter("tint_amount", amount)
 
 
 ## true — წინ (`direction` მხარეს) ფეხქვეშ მიწაა; false — კიდეა, შეიძლება ჩავარდეს.

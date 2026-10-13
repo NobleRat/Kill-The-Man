@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://levels/level.gd" id="3_level"]
 [ext_resource type="PackedScene" path="res://enemies/enemy.tscn" id="4_enemy"]
 [ext_resource type="PackedScene" path="res://enemies/melee_enemy.tscn" id="5_melee"]
+[ext_resource type="PackedScene" path="res://enemies/ranged_enemy.tscn" id="6_ranged"]
 
 [sub_resource type="Gradient" id="Gradient_sky"]
 offsets = PackedFloat32Array(0, 0.3, 0.5, 0.66, 1)
@@ -233,6 +234,14 @@ attack_damage = 15
 position = Vector2(3800, 480)
 max_health = 8
 attack_damage = 25
+
+[node name="RangedEnemy1" parent="Enemies" instance=ExtResource("6_ranged")]
+position = Vector2(2250, 480)
+
+[node name="RangedEnemy2" parent="Enemies" instance=ExtResource("6_ranged")]
+position = Vector2(4500, 480)
+max_health = 4
+projectile_damage = 30
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(0, 480)

@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://enemies/ranged_enemy.gd" id="1_ranged"]
+[ext_resource type="Shader" path="res://effects/flash.gdshader" id="2_flash"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(28, 70)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+resource_local_to_scene = true
+shader = ExtResource("2_flash")
+shader_parameter/flash_amount = 0.0
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/tint_amount = 0.0
+shader_parameter/tint_color = Color(0.45, 0.95, 1, 1)
+
+[node name="RangedEnemy" type="CharacterBody2D"]
+collision_layer = 4
+script = ExtResource("1_ranged")
+max_health = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -35)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Visual" type="Node2D" parent="."]
+material = SubResource("ShaderMaterial_flash")
+
+[node name="Body" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-15, -52, 15, -52, 15, 0, -15, 0)
+
+[node name="Head" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-9, -70, 9, -70, 9, -52, -9, -52)
+
+[node name="Hat" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-6, -80, 3, -80, 3, -70, -6, -70)
+
+[node name="Eye" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0.45, 0.95, 1, 1)
+polygon = PackedVector2Array(3, -64, 8, -64, 8, -60, 3, -60)
+
+[node name="Staff" type="Polygon2D" parent="Visual"]
+use_parent_material = true
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(17, -88, 21, -88, 21, 0, 17, 0)
+
+[node name="Orb" type="Node2D" parent="Visual"]
+position = Vector2(19, -94)
+
+[node name="HealthBar" type="Node2D" parent="."]
+position = Vector2(0, -110)
+
+[node name="Back" type="ColorRect" parent="HealthBar"]
+offset_left = -20.0
+offset_top = -3.0
+offset_right = 20.0
+offset_bottom = 3.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Fill" type="ColorRect" parent="HealthBar"]
+offset_left = -19.0
+offset_top = -2.0
+offset_right = 19.0
+offset_bottom = 2.0
+mouse_filter = 2
+color = Color(0.85, 0.2, 0.15, 1)

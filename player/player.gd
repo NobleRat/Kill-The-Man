@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## მოთამაშე: სირბილი, ხტომა (ორმაგიც), დეში (Shift) და მახვილით დარტყმა.
+## მოთამაშე: სირბილი, ხტომა (ორმაგიც), დეში (Shift), მახვილით დარტყმა და სიცოცხლე.
 ##
 ## ქვემოთ მოცემული რიცხვები შეგიძლიათ Inspector-ში შეცვალოთ
 ## (აირჩიეთ Player კვანძი) — კოდში შესვლა არ არის საჭირო.
@@ -59,6 +59,9 @@ extends CharacterBody2D
 @export var air_dash := true
 ## დეშის ღილაკი ამდენი წამით ადრე დაჭერილიც ჩაითვლება.
 @export var dash_buffer_time := 0.15
+## დეშის დაწყებიდან ამდენ წამს მტრის დარტყმა ვერ გაზიანებს —
+## დეშით შეგიძლია დარტყმაში გაძვრე (0 = გამორთულია; თვითონ დეში dash_time წამს გრძელდება).
+@export var dash_invincibility_time := 0.2
 ## დეშისას სხეული ამდენჯერ იჭიმება სიგრძეში (1 = არ იჭიმება).
 @export_range(1.0, 2.0) var dash_stretch := 1.25
 ## დეშისას სხეული წინ ამდენი გრადუსით იხრება.
@@ -70,20 +73,30 @@ extends CharacterBody2D
 ## რამდენ წამში ქრება ანარეკლი.
 @export var ghost_fade_time := 0.25
 
-@export_group("მტრის დარტყმა")
+@export_group("სიცოცხლე")
+## სიცოცხლის რაოდენობა (ჩანს ეკრანის ზედა მარცხენა კუთხეში).
+@export_range(1, 20) var max_health := 5
+## მტრის დარტყმის შემდეგ ამდენ წამს ვერაფერი დაგაზიანებს (ამ დროს პერსონაჟი ციმციმებს).
+@export var invincibility_time := 0.8
+## დარტყმისას წითელი ციმციმის ხანგრძლივობა (წამი).
+@export var hurt_flash_time := 0.25
+## დარტყმის ციმციმის ფერი.
+@export var hurt_flash_color := Color(1.0, 0.15, 0.1)
 ## მტრის დარტყმისას რა სიჩქარით გადაიწევს უკან.
-## (სიცოცხლე ჯერ არ არის — დარტყმა მხოლოდ უკან აგდებს.)
 @export var hurt_knockback_speed := 420.0
 ## მტრის დარტყმისას რამდენად ახტება ზემოთ.
 @export var hurt_knockback_hop := 500.0
 ## დარტყმის შემდეგ ამდენ წამს სირბილს და დეშს ვერ მართავ.
 @export var hurt_stun_time := 0.25
+## სიცოცხლე რომ გაგითავდება, ამდენი წამის მერე იწყება დონე თავიდან.
+@export var death_restart_delay := 0.8
 
 @export_group("სხვა")
 ## ამ სიღრმეზე ჩავარდნისას მოთამაშე საწყის ადგილას ბრუნდება.
 @export var fall_limit := 1300.0
 
 const AFTERIMAGE := preload("res://effects/afterimage.gd")
+const HealthDisplay := preload("res://player/health_display.gd")
 const DASH_DUST := preload("res://effects/dash_dust.tscn")
 const JUMP_PUFF := preload("res://effects/jump_puff.tscn")
 ## დეშის შემდეგ სხეული ამდენ წამში სწორდება.
@@ -92,6 +105,9 @@ const DASH_POSE_RECOVERY := 0.12
 const AIR_JUMP_POSE_RECOVERY := 0.2
 ## W და Space ამ დროის შიგნით თუ დააჭირე, ეს „ერთად დაჭერაა“ — ერთი ხტომა, არა ორმაგი.
 const SIMULTANEOUS_PRESS_TIME := 0.1
+## დარტყმის შემდგომი დაუზიანებლობისას ციმციმი: რამდენ წამში ერთხელ ქრება და რამდენად.
+const BLINK_INTERVAL := 0.07
+const BLINK_OPACITY := 0.3
 
 var _coyote_timer := 0.0
 var _jump_buffer_timer := 0.0
@@ -115,25 +131,48 @@ var _ghost_timer := 0.0
 var _dash_pose := 0.0
 ## მტრის დარტყმის შემდეგ მართვის დაბრუნებამდე დარჩენილი დრო.
 var _hurt_timer := 0.0
+var _health := 0
+## დარტყმის შემდგომი დაუზიანებლობიდან დარჩენილი დრო.
+var _hurt_invincible_timer := 0.0
+## დეშის დაუზიანებლობიდან დარჩენილი დრო.
+var _dash_invincible_timer := 0.0
+## true — სიცოცხლე გაუთავდა, დონე მალე თავიდან დაიწყება.
+var _dead := false
+var _flash_tween: Tween
 
 @onready var _visual: Node2D = $Visual
 @onready var _sword: Sword = $Visual/Sword
+@onready var _material: ShaderMaterial = $Visual.material
+@onready var _health_display: HealthDisplay = $HUD/HealthDisplay
 
 
 func _ready() -> void:
 	# მტრები მოთამაშეს ამ ჯგუფით პოულობენ.
 	add_to_group("player")
 	_spawn_position = global_position
+	_health = max_health
+	_health_display.show_health(_health, max_health)
+	_material.set_shader_parameter("flash_color", hurt_flash_color)
 	_sword.swing_started.connect(_on_sword_swing_started)
 	_sword.turn_requested.connect(_on_sword_turn_requested)
 
 
 # ეს ფუნქცია წამში 60-ჯერ ეშვება და ყოველ ჯერზე მოძრაობას ითვლის.
 func _physics_process(delta: float) -> void:
+	if _dead:
+		# სიცოცხლე გაუთავდა: მართვა აღარ მუშაობს, მხოლოდ ეცემა და ჩერდება.
+		_apply_gravity(delta)
+		if is_on_floor():
+			velocity.x = move_toward(velocity.x, 0.0, friction * delta)
+		move_and_slide()
+		return
+
 	if Input.is_action_just_pressed("attack"):
 		_sword.request_attack()
 
 	_hurt_timer -= delta
+	_hurt_invincible_timer -= delta
+	_dash_invincible_timer -= delta
 	_handle_dash(delta)
 	# დეშის დროს სიმძიმე არ მოქმედებს — პირდაპირ ხაზზე მივფრინავთ.
 	if not _is_dashing():
@@ -146,6 +185,7 @@ func _physics_process(delta: float) -> void:
 	if _is_dashing() and is_on_wall():
 		_end_dash()
 	_update_pose(delta)
+	_update_blink()
 
 	if global_position.y > fall_limit:
 		_respawn()
@@ -271,6 +311,7 @@ func _start_dash() -> void:
 		_facing = signf(direction)
 	_dash_direction = _facing
 	_dash_timer = dash_time
+	_dash_invincible_timer = dash_invincibility_time
 	_dash_pose = 1.0
 	_sword.locked = true
 	velocity = Vector2(_dash_direction * dash_speed, 0.0)
@@ -334,13 +375,57 @@ func _on_sword_swing_started() -> void:
 		velocity.x = _facing * lunge_speed
 
 
-## მტერი იძახებს, როცა მოთამაშეს მოხვდება. `direction` — დარტყმის მიმართულება.
-## სიცოცხლე ჯერ არ არის, ამიტომ `damage` ჯერ არაფერს აკლებს — მოთამაშე მხოლოდ უკან ვარდება.
-func take_hit(_damage: int, direction: Vector2, knockback := 1.0) -> void:
+## მტერი იძახებს, როცა მოთამაშეს მოხვდება. `damage` — რამდენ სიცოცხლეს აკლებს,
+## `direction` — დარტყმის მიმართულება. აბრუნებს true-ს, თუ დარტყმამ გაჭრა,
+## false-ს — თუ მოთამაშე ამ დროს დაუზიანებელი იყო (დარტყმის შემდეგ ან დეშის დროს).
+func take_hit(damage: int, direction: Vector2, knockback := 1.0) -> bool:
+	if _dead or is_invincible():
+		return false
+	_health = maxi(_health - damage, 0)
+	_health_display.show_health(_health, max_health)
+	_flash()
+
 	if _is_dashing():
 		_end_dash()
 	velocity = Vector2(direction.x * hurt_knockback_speed, -hurt_knockback_hop) * knockback
 	_hurt_timer = hurt_stun_time
+	_hurt_invincible_timer = invincibility_time
+
+	if _health <= 0:
+		_die()
+	return true
+
+
+## true — ახლა ვერაფერი დააზიანებს.
+func is_invincible() -> bool:
+	return _hurt_invincible_timer > 0.0 or _dash_invincible_timer > 0.0
+
+
+func _die() -> void:
+	_dead = true
+	_hurt_invincible_timer = 0.0
+	_update_blink()
+	# მთლიანად წითლდება და ასე რჩება.
+	if _flash_tween:
+		_flash_tween.kill()
+	_material.set_shader_parameter("flash_amount", 1.0)
+	# შეჩერებაც (hitstop) არ აჩქარებს/ანელებს ამ ლოდინს — ნამდვილი წამებია.
+	await get_tree().create_timer(death_restart_delay, true, false, true).timeout
+	get_tree().reload_current_scene()
+
+
+# დარტყმისას წამიერად წითლდება.
+func _flash() -> void:
+	if _flash_tween:
+		_flash_tween.kill()
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_material, "shader_parameter/flash_amount", 0.0, hurt_flash_time).from(1.0)
+
+
+# დარტყმის შემდეგ, სანამ დაუზიანებელია, პერსონაჟი ციმციმებს.
+func _update_blink() -> void:
+	var faded := _hurt_invincible_timer > 0.0 and fmod(_hurt_invincible_timer, BLINK_INTERVAL * 2.0) < BLINK_INTERVAL
+	_visual.modulate.a = BLINK_OPACITY if faded else 1.0
 
 
 func _respawn() -> void:

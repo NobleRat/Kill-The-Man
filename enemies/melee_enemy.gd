@@ -32,9 +32,9 @@ extends "res://enemies/enemy.gd"
 @export var attack_lunge := 220.0
 ## დასვენება: დარტყმის მერე ამდენ წამს დგას — შენი შანსი, რომ დაარტყა.
 @export var recovery_time := 0.5
-## ზიანი (მოთამაშეს სიცოცხლე ჯერ არ აქვს — ახლა მხოლოდ უკან აგდებს).
+## რამდენ სიცოცხლეს აკლებს მოთამაშეს.
 @export var attack_damage := 1
-## მოთამაშის უკუგდების სიძლიერე (1 = ჩვეულებრივი, ზომები — Player-ის ჯგუფში „მტრის დარტყმა“).
+## მოთამაშის უკუგდების სიძლიერე (1 = ჩვეულებრივი, ზომები — Player-ის ჯგუფში „სიცოცხლე“).
 @export var attack_knockback := 1.0
 ## მოთამაშეს რომ მოხვდება — თამაშის შეჩერება (წამი).
 @export var attack_hitstop := 0.08
@@ -153,9 +153,10 @@ func _check_hit() -> void:
 	if _hit_player:
 		return
 	for body in _hitbox.get_overlapping_bodies():
-		if body.has_method("take_hit"):
+		# take_hit აბრუნებს false-ს, თუ მოთამაშე ამ დროს დაუზიანებელია (მაგ. დეშის დროს) —
+		# მაშინ ჭრა გრძელდება და დეშის დასრულების მერეც შეიძლება მოხვდეს.
+		if body.has_method("take_hit") and body.take_hit(attack_damage, Vector2(_direction, 0.0), attack_knockback):
 			_hit_player = true
-			body.take_hit(attack_damage, Vector2(_direction, 0.0), attack_knockback)
 			Effects.hitstop(attack_hitstop)
 			Effects.shake(attack_shake)
 			return

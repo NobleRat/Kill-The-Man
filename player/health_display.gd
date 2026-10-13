@@ -1,30 +1,39 @@
 extends Control
-## მოთამაშის სიცოცხლე ეკრანის ზედა მარცხენა კუთხეში:
-## ერთი მართკუთხედი = ერთი სიცოცხლე, დაკარგული სიცოცხლე — ცარიელი ჩარჩო.
+## მოთამაშის სიცოცხლის ზოლი ეკრანის ზედა მარცხენა კუთხეში.
+## წითელი ზოლი — დარჩენილი სიცოცხლე, შიგნით კი რიცხვით: „დარჩენილი / მაქსიმალური“.
+## დარტყმისას წითელი ზოლი სწრაფად მოკლდება, დაკარგული ნაწილი კი წამით ღია ფერით რჩება.
+##
+## ფერები და ზომა — შვილ კვანძებში: Fill (წითელი ზოლი), Trail (დაკარგული ნაწილი),
+## Back (ცარიელი ფონი), Frame (ჩარჩო), Text (რიცხვი).
 
-## ერთი უჯრის ზომა (პიქსელი).
-@export var cell_size := Vector2(22.0, 14.0)
-## უჯრებს შორის მანძილი.
-@export var cell_gap := 6.0
-## სავსე უჯრის ფერი.
-@export var full_color := Color(0.95, 0.88, 0.75)
-## დაკარგული სიცოცხლის უჯრის ფერი.
-@export var empty_color := Color(0.0, 0.0, 0.0, 0.5)
+## რამდენ წამში მოკლდება წითელი ზოლი ახალ მნიშვნელობამდე.
+@export var shrink_time := 0.15
+## დაკარგული ნაწილი (ღია ზოლი) ამდენ წამს ჩერდება...
+@export var trail_delay := 0.35
+## ...და მერე ამდენ წამში ქრება.
+@export var trail_time := 0.3
 
-var _health := 0
-var _max_health := 0
+var _tween: Tween
+
+@onready var _fill: Control = $Fill
+@onready var _trail: Control = $Trail
+@onready var _text: Label = $Text
 
 
 ## მოთამაშე იძახებს, როცა სიცოცხლე იცვლება.
 func show_health(health: int, max_health: int) -> void:
-	_health = health
-	_max_health = max_health
-	queue_redraw()
-
-
-func _draw() -> void:
-	for i in _max_health:
-		var rect := Rect2(Vector2(i * (cell_size.x + cell_gap), 0.0), cell_size)
-		draw_rect(rect, full_color if i < _health else empty_color)
-		# ჩარჩო, რომ ცარიელი უჯრაც ჩანდეს.
-		draw_rect(rect, Color(full_color, 0.6), false, 2.0)
+	_text.text = "%d / %d" % [health, max_health]
+	var ratio := clampf(float(health) / max_health, 0.0, 1.0)
+	if _tween:
+		_tween.kill()
+	if ratio >= _fill.scale.x:
+		# სიცოცხლე არ შემცირებულა (მაგ. თამაშის დასაწყისი) — ზოლი მაშინვე ივსება.
+		_fill.scale.x = ratio
+		_trail.scale.x = ratio
+		return
+	_tween = create_tween()
+	# თამაშის წამიერი შეჩერება (hitstop) ზოლს არ აჩერებს.
+	_tween.set_ignore_time_scale()
+	_tween.tween_property(_fill, "scale:x", ratio, shrink_time)
+	_tween.tween_interval(trail_delay)
+	_tween.tween_property(_trail, "scale:x", ratio, trail_time)

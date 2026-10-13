@@ -226,9 +226,13 @@ position = Vector2(2800, 480)
 
 [node name="MeleeEnemy1" parent="Enemies" instance=ExtResource("5_melee")]
 position = Vector2(1000, 480)
+max_health = 4
+attack_damage = 15
 
 [node name="MeleeEnemy2" parent="Enemies" instance=ExtResource("5_melee")]
 position = Vector2(3800, 480)
+max_health = 8
+attack_damage = 25
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(0, 480)
